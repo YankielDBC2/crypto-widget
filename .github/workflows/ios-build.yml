@@ -1,0 +1,42 @@
+name: iOS Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Expo
+        run: npx expo install --fix
+
+      - name: Generate native iOS project
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Install iOS pods
+        run: cd ios && pod install && cd ..
+
+      - name: Build iOS project
+        run: xcodebuild -workspace ios/*.xcworkspace -scheme CryptoWidget -configuration Release -archivePath build/CryptoWidget.xcarchive archive
+
+      - name: Create IPA
+        run: xcodebuild -exportArchive -archivePath build/CryptoWidget.xcarchive -exportPath dist -exportOptionsPlist ios/ExportOptions.plist
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: crypto-widget-ipa
+          path: dist/CryptoWidget.ipa
